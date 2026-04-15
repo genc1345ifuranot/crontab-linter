@@ -8,6 +8,7 @@ from typing import Any, Dict
 from .schedule import ScheduleResult
 
 _DATE_FMT = "%Y-%m-%d %H:%M %Z"
+_SUPPORTED_FORMATS = ("plain", "json")
 
 
 def format_schedule_plain(result: ScheduleResult) -> str:
@@ -45,8 +46,15 @@ def format_schedule(result: ScheduleResult, fmt: str = "plain") -> str:
 
     Args:
         result: The schedule result to format.
-        fmt: ``"plain"`` or ``"json"``.
+        fmt: Output format; one of ``"plain"`` or ``"json"``.
+
+    Raises:
+        ValueError: If *fmt* is not a supported format string.
     """
+    if fmt not in _SUPPORTED_FORMATS:
+        raise ValueError(
+            f"Unsupported format {fmt!r}. Expected one of: {', '.join(_SUPPORTED_FORMATS)}"
+        )
     if fmt == "json":
         return format_schedule_json(result)
     return format_schedule_plain(result)
