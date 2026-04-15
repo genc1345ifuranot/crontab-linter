@@ -1,12 +1,13 @@
-"""Template management for saving and reusing cron expression templates."""
+"""Storage and retrieval of named cron expression templates."""
+
 from __future__ import annotations
 
 import json
 import os
 from dataclasses import dataclass, field
-from typing import Dict, List, Optional
+from typing import List, Optional
 
-DEFAULT_TEMPLATE_FILE = os.path.expanduser("~/.crontab_linter_templates.json")
+DEFAULT_PATH = os.path.expanduser("~/.crontab_linter_templates.json")
 
 
 @dataclass
@@ -16,7 +17,7 @@ class TemplateEntry:
     description: str = ""
     tags: List[str] = field(default_factory=list)
 
-    def to_dict(self) -> Dict:
+    def to_dict(self) -> dict:
         return {
             "name": self.name,
             "expression": self.expression,
@@ -25,7 +26,7 @@ class TemplateEntry:
         }
 
     @staticmethod
-    def from_dict(data: Dict) -> "TemplateEntry":
+    def from_dict(data: dict) -> "TemplateEntry":
         return TemplateEntry(
             name=data["name"],
             expression=data["expression"],
@@ -34,17 +35,19 @@ class TemplateEntry:
         )
 
 
-def _load_templates(path: str = DEFAULT_TEMPLATE_FILE) -> Dict[str, TemplateEntry]:
-    if not os.path.exists(path):
-        return {}
-    with open(path, "r", encoding="utf-8") as fh:
-        raw = json.load(fh)
-    return {k: TemplateEntry.from_dict(v) for k, v in raw.items()}
+def _load_templates(path: Optional[str] = None) -> List[TemplateEntry]:
+    p = path or DEFAULT_PATH
+    if not os.path.exists(p):
+        return []
+    with open(p, "r", encoding="utf-8") as f:
+        data = json.load(f)
+    return [TemplateEntry.from_dict(d) for d in data]
 
 
-def _save_templates(templates: Dict[str, TemplateEntry], path: str = DEFAULT_TEMPLATE_FILE) -> None:
-    with open(path, "w", encoding="utf-8") as fh:
-        json.dump({k: v.to_dict() for k, v in templates.items()}, fh, indent=2)
+def _save_templates(entries: List[TemplateEntry], path: Optional[str] = None) -> None:
+    p = path or DEFAULT_PATH
+    with open(p, "w", encoding="utf-8") as f:
+        json.dump([e.to_dict() for e in entries], f, indent=2)
 
 
 def save_template(
@@ -52,27 +55,31 @@ def save_template(
     expression: str,
     description: str = "",
     tags: Optional[List[str]] = None,
-    path: str = DEFAULT_TEMPLATE_FILE,
+    path: Optional[str] = None,
 ) -> TemplateEntry:
-    templates = _load_templates(path)
+    entries = _load_templates(path)
+    entries = [e for e in entries if e.name != name]
     entry = TemplateEntry(name=name, expression=expression, description=description, tags=tags or [])
-    templates[name] = entry
-    _save_templates(templates, path)
+    entries.append(entry)
+    _save_templates(entries, path)
     return entry
 
 
-def get_template(name: str, path: str = DEFAULT_TEMPLATE_FILE) -> Optional[TemplateEntry]:
-    return _load_templates(path).get(name)
+def get_template(name: str, path: Optional[str] = None) -> Optional[TemplateEntry]:
+    for entry in _load_templates(path):
+        if entry.name == name:
+            return entry
+    return None
 
 
-def delete_template(name: str, path: str = DEFAULT_TEMPLATE_FILE) -> bool:
-    templates = _load_templates(path)
-    if name not in templates:
+def delete_template(name: str, path: Optional[str] = None) -> bool:
+    entries = _load_templates(path)
+    new_entries = [e for e in entries if e.name != name]
+    if len(new_entries) == len(entries):
         return False
-    del templates[name]
-    _save_templates(templates, path)
+    _save_templates(new_entries, path)
     return True
 
 
-def list_templates(path: str = DEFAULT_TEMPLATE_FILE) -> List[TemplateEntry]:
-    return list(_load_templates(path).values())
+def list_templates(path: Optional[str] = None) -> List[TemplateEntry]:
+    return _load_templates(path)
