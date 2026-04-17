@@ -53,6 +53,21 @@ def _check_unreachable_dom(expr: CronExpression, warnings: List[str]) -> None:
             )
 
 
+def _check_every_minute(expr: CronExpression, warnings: List[str]) -> None:
+    """Warn when the expression triggers every minute, which is rarely intentional."""
+    if (
+        expr.minute.raw == "*"
+        and expr.hour.raw == "*"
+        and expr.day_of_month.raw == "*"
+        and expr.month.raw == "*"
+        and expr.day_of_week.raw == "*"
+    ):
+        warnings.append(
+            "Expression '* * * * *' triggers every minute. "
+            "This is rarely intentional; consider restricting the schedule."
+        )
+
+
 def validate(expression: str) -> ValidationResult:
     """Validate a crontab expression string."""
     parts = expression.strip().split()
@@ -74,5 +89,6 @@ def validate(expression: str) -> ValidationResult:
 
     _check_dom_dow_conflict(expr, warnings)
     _check_unreachable_dom(expr, warnings)
+    _check_every_minute(expr, warnings)
 
     return ValidationResult(is_valid=len(errors) == 0, errors=errors, warnings=warnings)
