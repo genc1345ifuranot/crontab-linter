@@ -99,3 +99,28 @@ def test_list_presets_structure():
 def test_list_presets_contains_reboot():
     aliases = [p["alias"] for p in list_presets()]
     assert "@reboot" in aliases
+
+
+def test_list_presets_no_duplicate_aliases():
+    """Ensure list_presets does not return entries with duplicate aliases."""
+    aliases = [p["alias"] for p in list_presets()]
+    assert len(aliases) == len(set(aliases)), "Duplicate aliases found in list_presets()"
+
+
+@pytest.mark.parametrize("alias", [
+    "@yearly",
+    "@annually",
+    "@monthly",
+    "@weekly",
+    "@daily",
+    "@midnight",
+    "@hourly",
+    "@reboot",
+])
+def test_resolve_all_known_presets(alias):
+    """Verify that every known preset alias resolves to a non-None result."""
+    result = resolve_preset(alias)
+    assert result is not None, f"Expected preset '{alias}' to resolve, but got None"
+    expr, desc = result
+    assert isinstance(expr, str) and len(expr) > 0
+    assert isinstance(desc, str) and len(desc) > 0
