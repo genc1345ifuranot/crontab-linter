@@ -109,13 +109,25 @@ def test_json_format_is_parseable():
     assert "minutely" in data
 
 
-def test_format_dispatch_json():
-    r = compute_heatmap("0 0 * * *")
-    out = format_heatmap(r, fmt="json")
-    assert json.loads(out)["total_hits_per_day"] == 1
+def test_json_invalid_expression_contains_errors():
+    """Invalid expressions should surface error details in the JSON output."""
+    r = compute_heatmap("99 * * * *")
+    data = json.loads(format_heatmap_json(r))
+    assert data["valid"] is False
+    assert "errors" in data
+    assert len(data["errors"]) > 0
 
 
-def test_format_dispatch_plain():
-    r = compute_heatmap("0 0 * * *")
+def test_format_heatmap_dispatches_plain(capsys):
+    """format_heatmap with fmt='plain' should produce plain-text output."""
+    r = compute_heatmap("0 12 * * *")
     out = format_heatmap(r, fmt="plain")
-    assert "Heatmap for" in out
+    assert "Total hits/day: 1" in out
+
+
+def test_format_heatmap_dispatches_json():
+    """format_heatmap with fmt='json' should produce valid JSON output."""
+    r = compute_heatmap("0 12 * * *")
+    out = format_heatmap(r, fmt="json")
+    data = json.loads(out)
+    assert data["valid"] is True
